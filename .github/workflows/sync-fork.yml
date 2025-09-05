@@ -1,0 +1,40 @@
+name: Sync Fork with Rebase
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Esegue ogni giorno a mezzanotte
+  workflow_dispatch: # Permette di eseguire manualmente il workflow
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Create GitHub App token
+      id: app-token
+      uses: actions/create-github-app-token@v1
+      with:
+        app-id: ${{ secrets.APP_ID }}
+        private-key: ${{ secrets.APP_PRIVATE_KEY }}
+        owner: ${{ github.repository_owner }}
+
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        token: ${{ steps.app-token.outputs.token }} # Usa il token dell'app
+
+    - name: Configure Git user
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Sync with upstream
+      run: |
+        git remote add upstream diogomiguel93/toast-translator.git
+        git fetch upstream
+        git rebase upstream/main
+
+    - name: Push changes
+      run: |
+        git push origin main --force-with-lease
