@@ -2,15 +2,20 @@ name: Sync Fork with Rebase
 
 on:
   schedule:
-    - cron: '0 0 * * *' # Esegue ogni giorno a mezzanotte
-  workflow_dispatch: # Permette di eseguire manualmente il workflow
+    - cron: '0 0 * * *' # Ogni giorno a mezzanotte
+  workflow_dispatch:
+
+env:
+  GH_PAT: ${{ secrets.EXTERNAL_REPO_PAT }}
+  UPSTREAM_REPO: nome-org/nome-repo-upstream  # ← cambia qui
+  DEFAULT_BRANCH: main
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Serve per il push dei cambiamenti
-      pull-requests: write # Utile per creare PR se necessario
+      contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout repository
@@ -24,20 +29,13 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Sync with upstream (External Repo)
-        env:
-          GH_PAT: ${{ secrets.EXTERNAL_REPO_PAT }}
         run: |
-          # Use dynamic variables to get the original repository URL
-          # Note: The PAT is needed for external repo access
-          UPSTREAM_URL="https://${{ env.GH_PAT }}@github.com/${{ github.event.repository.source.owner.login }}/${{ github.event.repository.source.name }}.git"
-          
-          # Add and update the 'upstream' remote
-          git remote add upstream $UPSTREAM_URL || git remote set-url upstream $UPSTREAM_URL
-          
-          # Fetch and rebase
+          UPSTREAM_URL="https://${GH_PAT}@github.com/${UPSTREAM_REPO}.git"
+          git remote add upstream "$UPSTREAM_URL" || git remote set-url upstream "$UPSTREAM_URL"
           git fetch upstream
-          git rebase upstream/main
+          git rebase upstream/${DEFAULT_BRANCH}
 
       - name: Push changes
         run: |
-          git push origin main --force-with-lease
+          git push origin ${DEFAULT_BRANCH} --force-with-lease
+
